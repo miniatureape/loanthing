@@ -1,0 +1,236 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Loan Thing</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body, html {
+                max-width: 400px;
+                margin: 0 auto;
+                width: 100%;
+                height: 100%;
+                background: #ecf0f1;
+                font-family: "Helvetica", "Arial";
+                padding: 5px 20px;
+                color: #2c3e50;
+            }
+
+            #setup, #expense, #results {
+                display: none;
+            }
+
+            #setup.on, #expense.on, #results.on {
+                display: block;
+            }
+
+            label {
+                display: block;
+                margin: 17px 0 7px;
+                font-weight: bold;
+                font-size: 1.5em;
+            }
+
+            input {
+                border: 1px solid #bdc3c7;
+                width: 100%;
+                padding: 10px;
+                border-radius: 5px;
+                font-size: 1.3em;
+                text-align: center;
+                font-weight: bold;
+                outline: none;
+            }
+
+            input[type="submit"] {
+                background: #2ecc71;
+                border: 0;
+                color: #fff;
+                margin-top: 30px;
+            }
+
+            #results p {
+                font-size: 1.3em;
+                margin: 1em 0;
+            }
+
+            #results span {
+                color: #2ecc71;
+                font-weight: bold;
+            }
+
+            #reset-btn {
+                background: #bdc3c7;
+            }
+
+            @media (min-width: 600px) {
+                body, html {
+                    padding: 20px;
+                    border: 1px solid #7f8c8d;
+                    border-radius: 3px;
+                }
+            }
+
+        </style>
+    </head>
+    <body>
+        
+        <h1>Loan Wrangler</h1>
+
+        <form id="setup">
+            <label>Number of Months Left</label><input id="months" type='tel' />
+            <label>Amount You Owe</label> <input id="amount" type='tel' />
+            <label>Interest Rate</label><input id="interest" step="any" type='tel' />
+            <input type="submit" value="Save Info" />
+        </form>
+
+        <form id="expense">
+            <label>Amount</label><input id="amount" type='tel' />
+            <input type="submit" value="Calculate" />
+        </form>
+
+        <div id="results">
+            <p id="real-amount">Spending <span id="raw-expense"></span> now will actually cost you <span id="adjusted-expense"></span>.</p>
+            <p id="time-saved">If you applied this to your principal instead, you would shave <span id="hours-reduced"></span> off your loan payback time.</p>
+            <input id="another-btn" type="submit" value="I've Got Another" />
+            <input id="reset-btn" type="submit" value="Reset Loan Info" />
+        </div>
+
+        <script>
+
+            (function() {
+
+                var find = function(elem, selector) {
+                    elem = elem || document;
+                    return elem.querySelectorAll(selector);
+                };
+
+                var findOne = function(elem, selector) {
+                    return find(elem, selector)[0];
+                };
+
+                var getNum = function(key) {
+                    return parseFloat(localStorage.getItem(key));
+                }
+
+                var setLoanInfo = function(e) {
+                    e.preventDefault();
+
+                    var months   = findOne(setupForm, '#months');
+                    var amount   = findOne(setupForm, '#amount');
+                    var interest = findOne(setupForm, '#interest');
+
+                    var numMonths    = parseInt(months.value, 10);
+                    var loanAmount   = parseFloat(amount.value);
+                    var loanInterest = parseFloat(interest.value);
+
+                    var totalInterest = loanAmount * (loanInterest / 100) * (numMonths / 12);
+
+                    localStorage['loan-months']   = numMonths;
+                    localStorage['loan-amount']   = loanAmount;
+                    localStorage['loan-interest']   = loanInterest;
+                    localStorage['loan-total-interest'] = totalInterest;
+                    localStorage['loan-total']    = loanAmount + totalInterest;
+                    localStorage['loan-payment']  = (loanAmount + totalInterest) / numMonths;
+
+                    setupForm.classList.remove('on');
+                    expenseForm.classList.add('on');
+                };
+
+                var calcExpense = function(e) {
+                    e.preventDefault();
+
+                    var queryAmount = parseFloat(findOne(expenseForm, '#amount').value);
+
+                    if (!queryAmount) {
+                        return;
+                    }
+
+                    var months   = getNum('loan-months');
+                    var amount   = getNum('loan-amount');
+                    var interest = getNum('loan-interest');
+                    var totalInterest = getNum('loan-total-interest');
+                    var payment  = getNum('loan-payment');
+                    var loanTotal = getNum('loan-total');
+
+                    var loweredInterest = (amount - queryAmount) * (interest / 100) *  (months / 12);
+                    var newLoanTotal = amount + loweredInterest;
+
+                    var newLength = newLoanTotal / payment;
+
+                    expenseForm.classList.remove('on');
+                    results.classList.add('on');
+
+                    var rawExpenseField = findOne(document, '#raw-expense');
+                    var adjustedExpenseField = findOne(document, '#adjusted-expense');
+                    var hoursReduced = findOne(document, '#hours-reduced');
+                    var timeSaved = 30 * (months - newLength)
+                    var unit = ' days';
+
+                    if (timeSaved < 1) {
+                        timeSaved = timeSaved / 24;
+                        unit = ' hours';
+                    }
+
+
+                    rawExpenseField.textContent = "$" + queryAmount;
+                    adjustedExpenseField.textContent = "$" +  (queryAmount + (loanTotal - newLoanTotal)).toFixed(2);
+                    hoursReduced.textContent = Math.floor(timeSaved) + unit;
+
+                };
+
+                var doAnother = function() {
+                    expenseForm.classList.add('on');
+                    results.classList.remove('on');
+                    var amountField = findOne(expenseForm, '#amount');
+                    amountField.value = '';
+                    amountField.focus();
+
+                }
+
+                var resetLoan = function() {
+                    expenseForm.classList.remove('on');
+                    results.classList.remove('on');
+                    setupForm.classList.add('on');
+                    populateSetup();
+                }
+
+                var populateSetup = function() {
+                    var months   = findOne(setupForm, '#months');
+                    var amount   = findOne(setupForm, '#amount');
+                    var interest = findOne(setupForm, '#interest');
+
+                    months.value   = getNum('loan-months');
+                    amount.value   = getNum('loan-amount');
+                    interest.value = getNum('loan-interest');
+                }
+
+                var setupForm = findOne(document, '#setup');
+                var expenseForm = findOne(document, '#expense');
+                var results = findOne(document, '#results');
+                var anotherBtn = findOne(results, '#another-btn');
+                var resetBtn = findOne(results, '#reset-btn');
+
+                setupForm.addEventListener('submit', setLoanInfo);
+                expenseForm.addEventListener('submit', calcExpense);
+                anotherBtn.addEventListener('click', doAnother);
+                resetBtn.addEventListener('click', resetLoan);
+
+                if ('loan-months' in localStorage) {
+                    expenseForm.classList.add('on');
+                } else {
+                    setupForm.classList.add('on');
+                }
+
+                
+            })()
+
+        </script>
+    </body>
+</html>
