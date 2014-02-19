@@ -34,7 +34,7 @@
                 display: block;
                 margin: 17px 0 7px;
                 font-weight: bold;
-                font-size: 1.5em;
+                font-size: 1em;
             }
 
             input {
@@ -52,7 +52,7 @@
                 background: #2ecc71;
                 border: 0;
                 color: #fff;
-                margin-top: 30px;
+                margin-top: 20px;
             }
 
             #results p {
@@ -160,7 +160,7 @@
                     var loanTotal = getNum('loan-total');
 
                     var loweredInterest = (amount - queryAmount) * (interest / 100) *  (months / 12);
-                    var newLoanTotal = amount + loweredInterest;
+                    var newLoanTotal = (amount - queryAmount) + loweredInterest;
 
                     var newLength = newLoanTotal / payment;
 
